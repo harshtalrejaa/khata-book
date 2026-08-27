@@ -36,9 +36,11 @@ export default function WhatsAppModal({
         itemsSnippet =
           '\nRecent items purchased:\n' +
           recentCredit.items
-            .map(
-              (i) => `• ${i.name} (x${i.qty}): ${formatMoney(i.total)}`
-            )
+            .map((i) => {
+              const disc = Number(i.discount || i.discountPercent || 0);
+              const discText = disc > 0 ? ` (-${disc}% off)` : '';
+              return `• ${i.name} (x${i.qty || 1}${discText}): ${formatMoney(i.total)}`;
+            })
             .join('\n');
       }
 

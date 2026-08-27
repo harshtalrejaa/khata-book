@@ -318,29 +318,27 @@ export default function App() {
 
     if (targetTxId && targetTxId !== 'auto') {
       // Direct settlement associated with a specific credit purchase
-      let updatedTx = null;
-      setData((prev) => ({
-        ...prev,
-        transactions: prev.transactions.map((t) => {
-          if (t.id === targetTxId) {
-            const currentSettlements = Array.isArray(t.settlements) ? t.settlements : [];
-            updatedTx = {
-              ...t,
-              settlements: [...currentSettlements, newSettlement],
-              updatedAt: new Date().toISOString(),
-            };
-            return updatedTx;
-          }
-          return t;
-        }),
-      }));
+      const targetTx = data.transactions.find((t) => t.id === targetTxId);
+      if (targetTx) {
+        const currentSettlements = Array.isArray(targetTx.settlements) ? targetTx.settlements : [];
+        const updatedTx = {
+          ...targetTx,
+          settlements: [...currentSettlements, newSettlement],
+          updatedAt: new Date().toISOString(),
+        };
 
-      if (updatedTx) cloudSaveTransaction(updatedTx);
+        setData((prev) => ({
+          ...prev,
+          transactions: prev.transactions.map((t) => (t.id === targetTxId ? updatedTx : t)),
+        }));
 
-      showToast(
-        `Recorded settlement of ${data.settings.currency}${Number(amount).toFixed(2)} for this bill!`,
-        'success'
-      );
+        cloudSaveTransaction(updatedTx);
+
+        showToast(
+          `Recorded settlement of ${data.settings.currency}${Number(amount).toFixed(2)} for this bill!`,
+          'success'
+        );
+      }
     } else {
       // Auto-allocate settlement across oldest unpaid credit bills
       let remainingToAllocate = Number(amount);
@@ -427,21 +425,21 @@ export default function App() {
   // Delete an attached settlement payment from a transaction
   const handleDeleteSettlement = (txId, settlementId) => {
     if (window.confirm('Remove this payment record from the bill?')) {
-      let changedTx = null;
+      const targetTx = data.transactions.find((t) => t.id === txId);
+      if (!targetTx) return;
+
+      const updatedTx = {
+        ...targetTx,
+        settlements: (targetTx.settlements || []).filter((s) => s.id !== settlementId),
+        updatedAt: new Date().toISOString(),
+      };
+
       setData((prev) => ({
         ...prev,
-        transactions: prev.transactions.map((t) => {
-          if (t.id === txId) {
-            changedTx = {
-              ...t,
-              settlements: (t.settlements || []).filter((s) => s.id !== settlementId),
-            };
-            return changedTx;
-          }
-          return t;
-        }),
+        transactions: prev.transactions.map((t) => (t.id === txId ? updatedTx : t)),
       }));
-      if (changedTx) cloudSaveTransaction(changedTx);
+
+      cloudSaveTransaction(updatedTx);
       showToast('Payment record removed', 'success');
     }
   };

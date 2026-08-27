@@ -6,7 +6,6 @@ export default function Navbar({
   currency,
   totalDue,
   theme,
-  cloudStatus = 'synced',
   onToggleTheme,
   onOpenCreditModal,
   onOpenSettings,
@@ -28,7 +27,7 @@ export default function Navbar({
         title="Go to main home view"
       >
         <div className="brand-icon-box">
-          <BookOpen size={16} strokeWidth={2.2} />
+          <BookOpen size={22} strokeWidth={2.4} />
         </div>
         <div className="brand-info">
           <span className="brand-title">{shopName || 'My Khata Book'}</span>
@@ -36,64 +35,35 @@ export default function Navbar({
         </div>
       </div>
 
-      <div className="header-total-pill" title="Total Outstanding Credit">
-        <span className="header-total-label">Total Dues:</span>
+      <div className="header-total-pill" title="Total Outstanding Credit (You will receive)">
+        <span className="header-total-label">Total Outstanding Dues:</span>
         <span className="header-total-val">{formatMoney(totalDue)}</span>
       </div>
 
       <div className="header-actions">
-        {/* Firebase Cloud Sync Status Badge */}
-        <div
-          className="cloud-status-badge"
-          title={
-            cloudStatus === 'synced'
-              ? 'Firebase Cloud: Real-time Synced'
-              : cloudStatus === 'syncing'
-              ? 'Firebase Cloud: Synchronizing...'
-              : 'Firebase Cloud: Offline Mode'
-          }
-        >
-          {cloudStatus === 'synced' ? (
-            <Cloud size={13} style={{ color: 'var(--accent-received)' }} />
-          ) : cloudStatus === 'syncing' ? (
-            <RefreshCw size={13} className="spin-icon" style={{ color: '#eab308' }} />
-          ) : (
-            <CloudOff size={13} style={{ color: 'var(--text-muted)' }} />
-          )}
-          <span className="cloud-status-text">
-            {cloudStatus === 'synced'
-              ? 'Synced'
-              : cloudStatus === 'syncing'
-              ? 'Syncing'
-              : 'Offline'}
-          </span>
-        </div>
-
         <button
-          className="btn btn-credit nav-credit-btn"
+          className="btn btn-credit"
           onClick={onOpenCreditModal}
           title="Create Credit Purchase (Shortcut: Alt+N)"
         >
           <Plus size={15} strokeWidth={2.4} />
-          <span className="nav-credit-label">Credit Purchase</span>
+          <span>Credit Purchase</span>
         </button>
 
         <button
-          className="btn btn-icon-only btn-nav-icon"
+          className="btn btn-icon-only"
           onClick={onToggleTheme}
           title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
-          aria-label="Toggle theme"
         >
-          {theme === 'light' ? <Sun size={15} /> : <Moon size={15} />}
+          {theme === 'light' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
 
         <button
-          className="btn btn-icon-only btn-nav-icon"
+          className="btn btn-icon-only"
           onClick={onOpenSettings}
-          title="Settings & Cloud Backup"
-          aria-label="Settings"
+          title="Settings & Backup"
         >
-          <Settings size={15} />
+          <Settings size={18} />
         </button>
       </div>
     </header>

@@ -336,8 +336,11 @@ export default function CustomerPassbook({
                               <th style={{ width: '40px', textAlign: 'right' }}>
                                 Qty
                               </th>
-                              <th style={{ width: '65px', textAlign: 'right' }}>
+                              <th style={{ width: '60px', textAlign: 'right' }}>
                                 Price
+                              </th>
+                              <th style={{ width: '50px', textAlign: 'right' }}>
+                                Disc%
                               </th>
                               <th style={{ width: '70px', textAlign: 'right' }}>
                                 Total
@@ -345,24 +348,34 @@ export default function CustomerPassbook({
                             </tr>
                           </thead>
                           <tbody>
-                            {tx.items.map((item, idx) => (
-                              <tr key={idx}>
-                                <td>
-                                  <b>{item.name || 'Item'}</b>
-                                </td>
-                                <td className="td-num">{item.qty || 1}</td>
-                                <td className="td-num">
-                                  {formatMoney(item.price)}
-                                </td>
-                                <td className="td-num">
-                                  <b>
-                                    {formatMoney(
-                                      item.total || item.qty * item.price
+                            {tx.items.map((item, idx) => {
+                              const disc = Number(item.discount || item.discountPercent || 0);
+                              const subtotal = (Number(item.qty) || 1) * (Number(item.price) || 0);
+                              const discAmount = subtotal * (disc / 100);
+                              const calcTotal = item.total !== undefined ? item.total : Math.max(0, subtotal - discAmount);
+
+                              return (
+                                <tr key={idx}>
+                                  <td>
+                                    <b>{item.name || 'Item'}</b>
+                                  </td>
+                                  <td className="td-num">{item.qty || 1}</td>
+                                  <td className="td-num">
+                                    {formatMoney(item.price)}
+                                  </td>
+                                  <td className="td-num">
+                                    {disc > 0 ? (
+                                      <span className="item-disc-badge">-{disc}%</span>
+                                    ) : (
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>0%</span>
                                     )}
-                                  </b>
-                                </td>
-                              </tr>
-                            ))}
+                                  </td>
+                                  <td className="td-num">
+                                    <b>{formatMoney(calcTotal)}</b>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
