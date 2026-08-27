@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Trash2, ShoppingBag, User } from 'lucide-react';
+import { Plus, X, Trash2, ShoppingBag, User, Percent } from 'lucide-react';
 
 export default function CreditPurchaseModal({
   isOpen,
@@ -16,7 +16,7 @@ export default function CreditPurchaseModal({
   const [date, setDate] = useState('');
   const [note, setNote] = useState('');
   const [items, setItems] = useState([
-    { name: '', qty: 1, price: '', total: 0 },
+    { name: '', qty: 1, price: '', discount: '', total: 0 },
   ]);
 
   // Suggestions state for customer name auto-match
@@ -46,12 +46,22 @@ export default function CreditPurchaseModal({
           editingTransaction.items.length > 0
         ) {
           setItems(
-            editingTransaction.items.map((it) => ({
-              name: it.name || '',
-              qty: it.qty !== undefined ? it.qty : 1,
-              price: it.price !== undefined ? it.price : '',
-              total: it.total || (it.qty || 1) * (it.price || 0),
-            }))
+            editingTransaction.items.map((it) => {
+              const q = it.qty !== undefined ? it.qty : 1;
+              const p = it.price !== undefined ? it.price : '';
+              const d = it.discount !== undefined ? it.discount : (it.discountPercent !== undefined ? it.discountPercent : '');
+              const subtotal = (Number(q) || 0) * (Number(p) || 0);
+              const discAmount = subtotal * ((Number(d) || 0) / 100);
+              const calculatedTotal = Math.max(0, Math.round((subtotal - discAmount) * 100) / 100);
+
+              return {
+                name: it.name || '',
+                qty: q,
+                price: p,
+                discount: d,
+                total: it.total !== undefined ? it.total : calculatedTotal,
+              };
+            })
           );
         } else {
           setItems([
@@ -59,6 +69,7 @@ export default function CreditPurchaseModal({
               name: 'Item / Service',
               qty: 1,
               price: editingTransaction.amount || 0,
+              discount: '',
               total: editingTransaction.amount || 0,
             },
           ]);
@@ -75,14 +86,14 @@ export default function CreditPurchaseModal({
         }
         setDate(new Date().toISOString().split('T')[0]);
         setNote('');
-        setItems([{ name: '', qty: 1, price: '', total: 0 }]);
+        setItems([{ name: '', qty: 1, price: '', discount: '', total: 0 }]);
       } else {
         // Fresh entry
         setCustomerName('');
         setMobileNumber('');
         setDate(new Date().toISOString().split('T')[0]);
         setNote('');
-        setItems([{ name: '', qty: 1, price: '', total: 0 }]);
+        setItems([{ name: '', qty: 1, price: '', discount: '', total: 0 }]);
       }
       setShowSuggestions(false);
     }
@@ -147,11 +158,16 @@ export default function CreditPurchaseModal({
         target.qty = value === '' ? '' : Math.max(0, parseFloat(value) || 0);
       } else if (field === 'price') {
         target.price = value === '' ? '' : Math.max(0, parseFloat(value) || 0);
+      } else if (field === 'discount') {
+        target.discount = value === '' ? '' : Math.min(100, Math.max(0, parseFloat(value) || 0));
       }
 
       const q = typeof target.qty === 'number' ? target.qty : 0;
       const p = typeof target.price === 'number' ? target.price : 0;
-      target.total = Math.round(q * p * 100) / 100;
+      const d = typeof target.discount === 'number' ? target.discount : 0;
+      const subtotal = q * p;
+      const discAmount = subtotal * (d / 100);
+      target.total = Math.max(0, Math.round((subtotal - discAmount) * 100) / 100);
 
       updated[index] = target;
       return updated;
@@ -159,12 +175,12 @@ export default function CreditPurchaseModal({
   };
 
   const handleAddItemRow = () => {
-    setItems((prev) => [...prev, { name: '', qty: 1, price: '', total: 0 }]);
+    setItems((prev) => [...prev, { name: '', qty: 1, price: '', discount: '', total: 0 }]);
   };
 
   const handleDeleteItemRow = (index) => {
     if (items.length <= 1) {
-      setItems([{ name: '', qty: 1, price: '', total: 0 }]);
+      setItems([{ name: '', qty: 1, price: '', discount: '', total: 0 }]);
       return;
     }
     setItems((prev) => prev.filter((_, i) => i !== index));
@@ -173,7 +189,7 @@ export default function CreditPurchaseModal({
   // Grand Total Calculation
   const grandTotal = Array.isArray(items)
     ? items.reduce((sum, i) => {
-        const itemTotal = Number(i.total) || (Number(i.qty) || 0) * (Number(i.price) || 0);
+        const itemTotal = Number(i.total) || 0;
         return sum + (itemTotal > 0 ? itemTotal : 0);
       }, 0)
     : 0;
@@ -190,12 +206,22 @@ export default function CreditPurchaseModal({
     // Filter valid items
     const validItems = items
       .filter((i) => i.name.trim() || Number(i.price) > 0)
-      .map((i) => ({
-        name: i.name.trim() || 'Item',
-        qty: Number(i.qty) > 0 ? Number(i.qty) : 1,
-        price: Number(i.price) >= 0 ? Number(i.price) : 0,
-        total: (Number(i.qty) > 0 ? Number(i.qty) : 1) * (Number(i.price) >= 0 ? Number(i.price) : 0),
-      }));
+      .map((i) => {
+        const qty = Number(i.qty) > 0 ? Number(i.qty) : 1;
+        const price = Number(i.price) >= 0 ? Number(i.price) : 0;
+        const discount = Number(i.discount) > 0 ? Math.min(100, Number(i.discount)) : 0;
+        const subtotal = qty * price;
+        const discAmount = subtotal * (discount / 100);
+        const total = Math.max(0, Math.round((subtotal - discAmount) * 100) / 100);
+
+        return {
+          name: i.name.trim() || 'Item',
+          qty,
+          price,
+          discount,
+          total,
+        };
+      });
 
     if (validItems.length === 0 || grandTotal <= 0) {
       onShowToast('Please add at least one item with a valid price', 'error');
@@ -319,16 +345,8 @@ export default function CreditPurchaseModal({
               <div className="items-header-bar">
                 <span className="items-header-title">
                   <ShoppingBag size={14} />
-                  Purchased Items & Prices
+                  Purchased Items & Prices ({items.length})
                 </span>
-                <button
-                  type="button"
-                  className="btn btn-xs btn-secondary"
-                  onClick={handleAddItemRow}
-                >
-                  <Plus size={12} strokeWidth={2.4} />
-                  <span>Add Item</span>
-                </button>
               </div>
 
               <div className="items-list-scroll">
@@ -380,6 +398,23 @@ export default function CreditPurchaseModal({
                           required
                         />
                       </div>
+                      <div className="item-sub-col item-disc-col">
+                        <label className="item-mini-label">Disc %</label>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          className="form-input"
+                          placeholder="0%"
+                          min="0"
+                          max="100"
+                          step="any"
+                          value={item.discount}
+                          onChange={(e) =>
+                            handleItemChange(index, 'discount', e.target.value)
+                          }
+                          title="Discount percentage (e.g. 5 for 5%)"
+                        />
+                      </div>
                       <div className="item-sub-col item-total-sub-col">
                         <label className="item-mini-label">Total</label>
                         <div className="item-calc-total-badge">
@@ -398,6 +433,16 @@ export default function CreditPurchaseModal({
                     </div>
                   </div>
                 ))}
+
+                {/* Add Item Button directly below the items */}
+                <button
+                  type="button"
+                  className="btn-add-item-row"
+                  onClick={handleAddItemRow}
+                >
+                  <Plus size={13} strokeWidth={2.4} />
+                  <span>Add Another Item</span>
+                </button>
               </div>
 
               {/* Grand Total */}

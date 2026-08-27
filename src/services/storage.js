@@ -44,9 +44,9 @@ const sampleTransactions = [
     type: 'CREDIT',
     date: new Date(Date.now() - 12 * 86400000).toISOString().split('T')[0],
     items: [
-      { name: 'Basmati Rice (5kg)', qty: 1, price: 450, total: 450 },
-      { name: 'Sunflower Oil (1L)', qty: 2, price: 140, total: 280 },
-      { name: 'Sugar (2kg)', qty: 1, price: 90, total: 90 }
+      { name: 'Basmati Rice (5kg)', qty: 1, price: 450, discount: 0, total: 450 },
+      { name: 'Sunflower Oil (1L)', qty: 2, price: 140, discount: 0, total: 280 },
+      { name: 'Sugar (2kg)', qty: 1, price: 100, discount: 10, total: 90 }
     ],
     amount: 820,
     settlements: [
@@ -68,8 +68,8 @@ const sampleTransactions = [
     type: 'CREDIT',
     date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
     items: [
-      { name: 'Wheat Flour (10kg)', qty: 1, price: 380, total: 380 },
-      { name: 'Tea Powder (500g)', qty: 1, price: 210, total: 210 }
+      { name: 'Wheat Flour (10kg)', qty: 1, price: 380, discount: 0, total: 380 },
+      { name: 'Tea Powder (500g)', qty: 1, price: 210, discount: 0, total: 210 }
     ],
     amount: 590,
     settlements: [],
@@ -80,13 +80,12 @@ const sampleTransactions = [
     id: 'tx_4',
     customerId: 'cust_2',
     type: 'CREDIT',
-    date: new Date(Date.now() - 6 * 86400000).toISOString().split('T')[0],
+    date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
     items: [
-      { name: 'Milk Packet (500ml)', qty: 4, price: 33, total: 132 },
-      { name: 'Bread Loaf', qty: 2, price: 45, total: 90 },
-      { name: 'Eggs (Dozen)', qty: 1, price: 84, total: 84 }
+      { name: 'Laundry Detergent (2kg)', qty: 1, price: 280, discount: 5, total: 266 },
+      { name: 'Dish Soap (750ml)', qty: 2, price: 110, discount: 0, total: 220 }
     ],
-    amount: 306,
+    amount: 486,
     settlements: [],
     note: 'Dairy items',
     createdAt: new Date(Date.now() - 6 * 86400000).toISOString(),
@@ -148,7 +147,14 @@ export const calculateCustomerBalance = (customerId, transactions) => {
 export const calculateTransactionTotal = (items = []) => {
   if (!Array.isArray(items)) return 0;
   const total = items.reduce((sum, i) => {
-    const itemTotal = Number(i.total) || (Number(i.qty) || 0) * (Number(i.price) || 0);
+    if (i.total !== undefined && !isNaN(Number(i.total)) && Number(i.total) > 0) {
+      return sum + Number(i.total);
+    }
+    const q = Number(i.qty) || 1;
+    const p = Number(i.price) || 0;
+    const d = Number(i.discount || i.discountPercent || 0);
+    const subtotal = q * p;
+    const itemTotal = subtotal * (1 - Math.min(100, Math.max(0, d)) / 100);
     return sum + (itemTotal > 0 ? itemTotal : 0);
   }, 0);
   return Math.round(total * 100) / 100;
