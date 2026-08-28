@@ -339,8 +339,8 @@ export default function CustomerPassbook({
                               <th style={{ width: '60px', textAlign: 'right' }}>
                                 Price
                               </th>
-                              <th style={{ width: '50px', textAlign: 'right' }}>
-                                Disc%
+                              <th style={{ width: '65px', textAlign: 'right' }}>
+                                Disc ({currency})
                               </th>
                               <th style={{ width: '70px', textAlign: 'right' }}>
                                 Total
@@ -349,9 +349,9 @@ export default function CustomerPassbook({
                           </thead>
                           <tbody>
                             {tx.items.map((item, idx) => {
-                              const disc = Number(item.discount || item.discountPercent || 0);
+                              const disc = Number(item.discount || 0);
                               const subtotal = (Number(item.qty) || 1) * (Number(item.price) || 0);
-                              const discAmount = subtotal * (disc / 100);
+                              const discAmount = Math.min(subtotal, disc);
                               const calcTotal = item.total !== undefined ? item.total : Math.max(0, subtotal - discAmount);
 
                               return (
@@ -365,9 +365,9 @@ export default function CustomerPassbook({
                                   </td>
                                   <td className="td-num">
                                     {disc > 0 ? (
-                                      <span className="item-disc-badge">-{disc}%</span>
+                                      <span className="item-disc-badge">-{formatMoney(disc)}</span>
                                     ) : (
-                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>0%</span>
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>-</span>
                                     )}
                                   </td>
                                   <td className="td-num">

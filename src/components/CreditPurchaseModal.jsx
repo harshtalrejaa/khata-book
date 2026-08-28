@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Trash2, ShoppingBag, User, Percent } from 'lucide-react';
+import { Plus, X, Trash2, ShoppingBag, User } from 'lucide-react';
 
 export default function CreditPurchaseModal({
   isOpen,
@@ -51,7 +51,7 @@ export default function CreditPurchaseModal({
               const p = it.price !== undefined ? it.price : '';
               const d = it.discount !== undefined ? it.discount : (it.discountPercent !== undefined ? it.discountPercent : '');
               const subtotal = (Number(q) || 0) * (Number(p) || 0);
-              const discAmount = subtotal * ((Number(d) || 0) / 100);
+              const discAmount = Math.min(subtotal, Math.max(0, Number(d) || 0));
               const calculatedTotal = Math.max(0, Math.round((subtotal - discAmount) * 100) / 100);
 
               return {
@@ -159,14 +159,14 @@ export default function CreditPurchaseModal({
       } else if (field === 'price') {
         target.price = value === '' ? '' : Math.max(0, parseFloat(value) || 0);
       } else if (field === 'discount') {
-        target.discount = value === '' ? '' : Math.min(100, Math.max(0, parseFloat(value) || 0));
+        target.discount = value === '' ? '' : Math.max(0, parseFloat(value) || 0);
       }
 
       const q = typeof target.qty === 'number' ? target.qty : 0;
       const p = typeof target.price === 'number' ? target.price : 0;
       const d = typeof target.discount === 'number' ? target.discount : 0;
       const subtotal = q * p;
-      const discAmount = subtotal * (d / 100);
+      const discAmount = Math.min(subtotal, d);
       target.total = Math.max(0, Math.round((subtotal - discAmount) * 100) / 100);
 
       updated[index] = target;
@@ -209,9 +209,9 @@ export default function CreditPurchaseModal({
       .map((i) => {
         const qty = Number(i.qty) > 0 ? Number(i.qty) : 1;
         const price = Number(i.price) >= 0 ? Number(i.price) : 0;
-        const discount = Number(i.discount) > 0 ? Math.min(100, Number(i.discount)) : 0;
+        const discount = Number(i.discount) > 0 ? Number(i.discount) : 0;
         const subtotal = qty * price;
-        const discAmount = subtotal * (discount / 100);
+        const discAmount = Math.min(subtotal, discount);
         const total = Math.max(0, Math.round((subtotal - discAmount) * 100) / 100);
 
         return {
@@ -399,20 +399,19 @@ export default function CreditPurchaseModal({
                         />
                       </div>
                       <div className="item-sub-col item-disc-col">
-                        <label className="item-mini-label">Disc %</label>
+                        <label className="item-mini-label">Disc ({currency})</label>
                         <input
                           type="number"
                           inputMode="decimal"
                           className="form-input"
-                          placeholder="0%"
+                          placeholder="0.00"
                           min="0"
-                          max="100"
                           step="any"
                           value={item.discount}
                           onChange={(e) =>
                             handleItemChange(index, 'discount', e.target.value)
                           }
-                          title="Discount percentage (e.g. 5 for 5%)"
+                          title={`Discount amount in ${currency}`}
                         />
                       </div>
                       <div className="item-sub-col item-total-sub-col">

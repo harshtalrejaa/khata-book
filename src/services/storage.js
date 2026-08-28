@@ -82,7 +82,7 @@ const sampleTransactions = [
     type: 'CREDIT',
     date: new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0],
     items: [
-      { name: 'Laundry Detergent (2kg)', qty: 1, price: 280, discount: 5, total: 266 },
+      { name: 'Laundry Detergent (2kg)', qty: 1, price: 280, discount: 14, total: 266 },
       { name: 'Dish Soap (750ml)', qty: 2, price: 110, discount: 0, total: 220 }
     ],
     amount: 486,
@@ -96,9 +96,9 @@ const sampleTransactions = [
     type: 'CREDIT',
     date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
     items: [
-      { name: 'LED Bulb 12W', qty: 3, price: 120, total: 360 },
-      { name: 'Extension Cord 4-way', qty: 1, price: 450, total: 450 },
-      { name: 'Insulation Tape', qty: 2, price: 25, total: 50 }
+      { name: 'LED Bulb 12W', qty: 3, price: 120, discount: 0, total: 360 },
+      { name: 'Extension Cord 4-way', qty: 1, price: 450, discount: 0, total: 450 },
+      { name: 'Insulation Tape', qty: 2, price: 25, discount: 0, total: 50 }
     ],
     amount: 860,
     settlements: [
@@ -152,9 +152,10 @@ export const calculateTransactionTotal = (items = []) => {
     }
     const q = Number(i.qty) || 1;
     const p = Number(i.price) || 0;
-    const d = Number(i.discount || i.discountPercent || 0);
+    const d = Number(i.discount || 0);
     const subtotal = q * p;
-    const itemTotal = subtotal * (1 - Math.min(100, Math.max(0, d)) / 100);
+    const discAmount = Math.min(subtotal, Math.max(0, d));
+    const itemTotal = Math.max(0, subtotal - discAmount);
     return sum + (itemTotal > 0 ? itemTotal : 0);
   }, 0);
   return Math.round(total * 100) / 100;

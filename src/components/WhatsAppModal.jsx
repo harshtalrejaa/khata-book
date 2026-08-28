@@ -20,35 +20,52 @@ export default function WhatsAppModal({
     })}`;
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   useEffect(() => {
     if (isOpen && customer) {
       const custTxs = transactions.filter((t) => t.customerId === customer.id);
-      const recentCredit = [...custTxs]
-        .reverse()
-        .find((t) => t.type === 'CREDIT');
+      const creditTxs = custTxs.filter((t) => t.type === 'CREDIT');
+      const sortedCredits = [...creditTxs].sort((a, b) => {
+        const diff = new Date(b.date) - new Date(a.date);
+        if (diff !== 0) return diff;
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+      });
+      const recentCredit = sortedCredits[0];
 
-      let itemsSnippet = '';
-      if (
-        recentCredit &&
-        Array.isArray(recentCredit.items) &&
-        recentCredit.items.length > 0
-      ) {
-        itemsSnippet =
-          '\nRecent items purchased:\n' +
-          recentCredit.items
-            .map((i) => {
-              const disc = Number(i.discount || i.discountPercent || 0);
-              const discText = disc > 0 ? ` (-${disc}% off)` : '';
-              return `• ${i.name} (x${i.qty || 1}${discText}): ${formatMoney(i.total)}`;
-            })
+      let purchaseDetails = '';
+      if (recentCredit) {
+        const dateStr = formatDate(recentCredit.date);
+        let itemsList = '';
+        if (Array.isArray(recentCredit.items) && recentCredit.items.length > 0) {
+          itemsList = recentCredit.items
+            .map((i) => `• ${i.name || 'Item'} (x${i.qty || 1}): ${formatMoney(i.total)}`)
             .join('\n');
+        }
+
+        purchaseDetails = `\n\n*Last Purchase Date:* ${dateStr || 'N/A'}`;
+        if (itemsList) {
+          purchaseDetails += `\n*Recent Items:*\n${itemsList}`;
+        }
       }
 
       const msg = `Hello ${customer.name},\nThis is a reminder from *${
         shopName || 'My Khata Book'
-      }*.\nYour current outstanding credit balance is *${formatMoney(
+      }*.\n\n*Total Outstanding Balance:* *${formatMoney(
         balance
-      )}*.${itemsSnippet}\n\nPlease clear the pending dues at your earliest convenience. Thank you!`;
+      )}*${purchaseDetails}\n\nPlease clear the pending dues at your earliest convenience. Thank you!`;
 
       setMessageText(msg);
     }
