@@ -94,10 +94,22 @@ export default function App() {
     document.title = data.settings.shopName || 'My Khata Book';
   }, [data.settings]);
 
-  // Derived state: Customer balances
+  // Derived state: Customer balances & latest activity
   const customersWithBalance = data.customers.map((cust) => {
     const balance = calculateCustomerBalance(cust.id, data.transactions);
-    return { ...cust, balance };
+    let latestActivity = new Date(cust.createdAt || 0).getTime();
+    const custTxs = data.transactions.filter((t) => t.customerId === cust.id);
+    custTxs.forEach((tx) => {
+      const txTime = new Date(tx.createdAt || tx.date || 0).getTime();
+      if (txTime > latestActivity) latestActivity = txTime;
+      if (Array.isArray(tx.settlements)) {
+        tx.settlements.forEach((s) => {
+          const sTime = new Date(s.createdAt || s.date || 0).getTime();
+          if (sTime > latestActivity) latestActivity = sTime;
+        });
+      }
+    });
+    return { ...cust, balance, latestActivity };
   });
 
   const totalOutstandingDue = customersWithBalance.reduce((sum, c) => {
@@ -282,6 +294,15 @@ export default function App() {
       if (activeCust) cloudSaveCustomer(activeCust);
       cloudSaveTransaction(newTx);
 
+      const hasMobile = Boolean(
+        (cleanPhone && cleanPhone.length > 0) ||
+        (activeCust && activeCust.mobile && activeCust.mobile.trim().length > 0)
+      );
+
+      if (hasMobile) {
+        setIsWhatsAppModalOpen(true);
+      }
+
       if (existingCust) {
         showToast(
           `Added credit purchase of ${data.settings.currency}${amount.toFixed(
@@ -300,6 +321,9 @@ export default function App() {
     }
 
     setSelectedCustomerId(targetCustomerId);
+    if (window.innerWidth <= 860) {
+      setIsMobileHidden(true);
+    }
     setIsCreditModalOpen(false);
     setEditingTransaction(null);
   };
@@ -628,7 +652,8 @@ export default function App() {
           transactions={selectedCustomerTransactions}
           balance={selectedCustomerBalance}
           currency={data.settings.currency}
-          onOpenCreditModal={() => {
+          onOpenCreditModal={(custId) => {
+            if (custId) setSelectedCustomerId(custId);
             setEditingTransaction(null);
             setIsCreditModalOpen(true);
           }}

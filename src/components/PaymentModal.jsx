@@ -5,8 +5,8 @@ import { getTransactionRemainingDue } from '../services/storage';
 export default function PaymentModal({
   isOpen,
   onClose,
-  customers,
-  transactions,
+  customers = [],
+  transactions = [],
   preselectedCustomerId,
   customerBalance,
   editingTransaction,
@@ -56,7 +56,7 @@ export default function PaymentModal({
         }
       }
     }
-  }, [isOpen, preselectedCustomerId, customerBalance, editingTransaction, prefillData, customers]);
+  }, [isOpen, preselectedCustomerId, customerBalance, editingTransaction, prefillData]);
 
   if (!isOpen) return null;
 
@@ -141,7 +141,7 @@ export default function PaymentModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
+        <form onSubmit={handleSubmit} noValidate className="modal-form">
           <div className="modal-body">
             <div className="form-group">
               <label className="form-label">
@@ -156,14 +156,21 @@ export default function PaymentModal({
                   setCustomerId(e.target.value);
                   setTargetTxId('auto');
                 }}
-                required
               >
                 <option value="">-- Choose Customer --</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.mobile ? `(${c.mobile})` : ''}
-                  </option>
-                ))}
+                {customers
+                  .slice()
+                  .sort((a, b) =>
+                    (a.name || '').localeCompare(b.name || '', undefined, {
+                      sensitivity: 'base',
+                      numeric: true,
+                    })
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.mobile ? `(${c.mobile})` : ''}
+                    </option>
+                  ))}
               </select>
             </div>
 

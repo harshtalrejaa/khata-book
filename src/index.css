@@ -353,6 +353,42 @@ html, body, #root {
   font-weight: 600;
 }
 
+.sidebar-sort-control {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+  padding: 0.1rem;
+}
+
+.sort-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-xs) - 2px);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.sort-pill-btn:hover {
+  color: var(--text-primary);
+}
+
+.sort-pill-btn.active {
+  background: var(--brand-primary);
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(99, 102, 241, 0.3);
+}
+
 .search-box {
   position: relative;
   display: flex;

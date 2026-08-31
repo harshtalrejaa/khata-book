@@ -109,13 +109,34 @@ export const subscribeToCloudData = (onUpdate, onStatusChange) => {
   };
 };
 
+const sanitizeForFirestore = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  const clean = {};
+  Object.keys(obj).forEach((key) => {
+    const val = obj[key];
+    if (val !== undefined) {
+      if (Array.isArray(val)) {
+        clean[key] = val.map((item) =>
+          typeof item === 'object' && item !== null ? sanitizeForFirestore(item) : item
+        );
+      } else if (typeof val === 'object' && val !== null) {
+        clean[key] = sanitizeForFirestore(val);
+      } else {
+        clean[key] = val;
+      }
+    }
+  });
+  return clean;
+};
+
 /**
  * Save or update a customer record in Firestore
  */
 export const cloudSaveCustomer = async (customer) => {
   try {
     const custRef = doc(db, CUSTOMERS_COL, customer.id);
-    await setDoc(custRef, customer, { merge: true });
+    const sanitized = sanitizeForFirestore(customer);
+    await setDoc(custRef, sanitized, { merge: true });
   } catch (e) {
     console.error('Failed saving customer to cloud:', e);
   }
@@ -147,7 +168,8 @@ export const cloudDeleteCustomer = async (customerId, customerTxIds = []) => {
 export const cloudSaveTransaction = async (transaction) => {
   try {
     const txRef = doc(db, TRANSACTIONS_COL, transaction.id);
-    await setDoc(txRef, transaction, { merge: true });
+    const sanitized = sanitizeForFirestore(transaction);
+    await setDoc(txRef, sanitized, { merge: true });
   } catch (e) {
     console.error('Failed saving transaction to cloud:', e);
   }
@@ -171,7 +193,8 @@ export const cloudDeleteTransaction = async (transactionId) => {
 export const cloudSaveSettings = async (settings) => {
   try {
     const settingsRef = doc(db, SETTINGS_DOC);
-    await setDoc(settingsRef, settings, { merge: true });
+    const sanitized = sanitizeForFirestore(settings);
+    await setDoc(settingsRef, sanitized, { merge: true });
   } catch (e) {
     console.error('Failed saving settings to cloud:', e);
   }
@@ -187,20 +210,23 @@ export const cloudUploadAllData = async ({ customers, transactions, settings }) 
     if (Array.isArray(customers)) {
       customers.forEach((c) => {
         const ref = doc(db, CUSTOMERS_COL, c.id);
-        batch.set(ref, c, { merge: true });
+        const sanitized = sanitizeForFirestore(c);
+        batch.set(ref, sanitized, { merge: true });
       });
     }
 
     if (Array.isArray(transactions)) {
       transactions.forEach((t) => {
         const ref = doc(db, TRANSACTIONS_COL, t.id);
-        batch.set(ref, t, { merge: true });
+        const sanitized = sanitizeForFirestore(t);
+        batch.set(ref, sanitized, { merge: true });
       });
     }
 
     if (settings) {
       const settingsRef = doc(db, SETTINGS_DOC);
-      batch.set(settingsRef, settings, { merge: true });
+      const sanitized = sanitizeForFirestore(settings);
+      batch.set(settingsRef, sanitized, { merge: true });
     }
 
     await batch.commit();

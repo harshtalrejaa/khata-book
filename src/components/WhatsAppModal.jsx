@@ -4,11 +4,11 @@ import { MessageCircle, Copy, ExternalLink, X } from 'lucide-react';
 export default function WhatsAppModal({
   isOpen,
   onClose,
-  customer,
-  balance,
-  transactions,
-  shopName,
-  currency,
+  customer = null,
+  balance = 0,
+  transactions = [],
+  shopName = 'My Khata Book',
+  currency = '₹',
   onShowToast,
 }) {
   const [messageText, setMessageText] = useState('');

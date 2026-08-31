@@ -18,6 +18,8 @@ export default function CreditPurchaseModal({
   const [items, setItems] = useState([
     { name: '', qty: 1, price: '', discount: '', total: 0 },
   ]);
+  const [autoFocusLastItem, setAutoFocusLastItem] = useState(false);
+  const itemNameRefs = useRef([]);
 
   // Suggestions state for customer name auto-match
   const [suggestions, setSuggestions] = useState([]);
@@ -97,7 +99,7 @@ export default function CreditPurchaseModal({
       }
       setShowSuggestions(false);
     }
-  }, [isOpen, preselectedCustomerId, editingTransaction, customers]);
+  }, [isOpen, preselectedCustomerId, editingTransaction]);
 
   // Handle outside click for suggestions dropdown
   useEffect(() => {
@@ -113,7 +115,18 @@ export default function CreditPurchaseModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  if (!isOpen) return null;
+  // Focus the newly added item name input automatically
+  useEffect(() => {
+    if (autoFocusLastItem && items.length > 0) {
+      const lastIndex = items.length - 1;
+      const el = itemNameRefs.current[lastIndex];
+      if (el) {
+        el.focus();
+        el.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+      }
+      setAutoFocusLastItem(false);
+    }
+  }, [items.length, autoFocusLastItem]);
 
   // Name change and autocomplete search
   const handleNameChange = (e) => {
@@ -121,9 +134,16 @@ export default function CreditPurchaseModal({
     setCustomerName(val);
 
     if (val.trim().length > 0) {
-      const filtered = customers.filter((c) =>
-        c.name.toLowerCase().includes(val.toLowerCase().trim())
-      );
+      const filtered = customers
+        .filter((c) =>
+          c.name.toLowerCase().includes(val.toLowerCase().trim())
+        )
+        .sort((a, b) =>
+          (a.name || '').localeCompare(b.name || '', undefined, {
+            sensitivity: 'base',
+            numeric: true,
+          })
+        );
       setSuggestions(filtered);
       setShowSuggestions(true);
 
@@ -175,6 +195,7 @@ export default function CreditPurchaseModal({
   };
 
   const handleAddItemRow = () => {
+    setAutoFocusLastItem(true);
     setItems((prev) => [...prev, { name: '', qty: 1, price: '', discount: '', total: 0 }]);
   };
 
@@ -185,6 +206,8 @@ export default function CreditPurchaseModal({
     }
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
+
+  if (!isOpen) return null;
 
   // Grand Total Calculation
   const grandTotal = Array.isArray(items)
@@ -205,7 +228,7 @@ export default function CreditPurchaseModal({
 
     // Filter valid items
     const validItems = items
-      .filter((i) => i.name.trim() || Number(i.price) > 0)
+      .filter((i) => (i.name && i.name.trim().length > 0) || Number(i.price) > 0)
       .map((i) => {
         const qty = Number(i.qty) > 0 ? Number(i.qty) : 1;
         const price = Number(i.price) >= 0 ? Number(i.price) : 0;
@@ -215,7 +238,7 @@ export default function CreditPurchaseModal({
         const total = Math.max(0, Math.round((subtotal - discAmount) * 100) / 100);
 
         return {
-          name: i.name.trim() || 'Item',
+          name: (i.name && i.name.trim()) || 'Item',
           qty,
           price,
           discount,
@@ -223,7 +246,9 @@ export default function CreditPurchaseModal({
         };
       });
 
-    if (validItems.length === 0 || grandTotal <= 0) {
+    const calculatedGrandTotal = validItems.reduce((sum, i) => sum + (Number(i.total) || 0), 0);
+
+    if (validItems.length === 0 || calculatedGrandTotal <= 0) {
       onShowToast('Please add at least one item with a valid price', 'error');
       return;
     }
@@ -232,9 +257,9 @@ export default function CreditPurchaseModal({
       id: editingTransaction ? editingTransaction.id : null,
       customerName: cleanName,
       mobileNumber: mobileNumber.trim(),
-      date,
+      date: date || new Date().toISOString().split('T')[0],
       items: validItems,
-      amount: grandTotal,
+      amount: calculatedGrandTotal,
       note: note.trim(),
     });
   };
@@ -256,7 +281,7 @@ export default function CreditPurchaseModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="modal-form">
+        <form onSubmit={handleSubmit} noValidate className="modal-form">
           <div className="modal-body">
             {/* Customer Name & Mobile Row */}
             <div className="form-row" style={{ position: 'relative' }}>
@@ -275,7 +300,6 @@ export default function CreditPurchaseModal({
                     onChange={handleNameChange}
                     onFocus={() => setShowSuggestions(true)}
                     autoFocus
-                    required
                   />
                   {showSuggestions && suggestions.length > 0 && (
                     <div className="suggestions-dropdown">
@@ -336,7 +360,6 @@ export default function CreditPurchaseModal({
                 className="form-input"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                required
               />
             </div>
 
@@ -355,6 +378,7 @@ export default function CreditPurchaseModal({
                     <div className="item-card-name-col">
                       <label className="item-mini-label">Item #{index + 1} Name</label>
                       <input
+                        ref={(el) => (itemNameRefs.current[index] = el)}
                         type="text"
                         className="form-input item-input-name"
                         placeholder="e.g. Rice, Sugar, Oil"
@@ -362,7 +386,6 @@ export default function CreditPurchaseModal({
                         onChange={(e) =>
                           handleItemChange(index, 'name', e.target.value)
                         }
-                        required
                       />
                     </div>
                     <div className="item-card-details-row">
@@ -379,7 +402,6 @@ export default function CreditPurchaseModal({
                           onChange={(e) =>
                             handleItemChange(index, 'qty', e.target.value)
                           }
-                          required
                         />
                       </div>
                       <div className="item-sub-col">
@@ -395,7 +417,6 @@ export default function CreditPurchaseModal({
                           onChange={(e) =>
                             handleItemChange(index, 'price', e.target.value)
                           }
-                          required
                         />
                       </div>
                       <div className="item-sub-col item-disc-col">

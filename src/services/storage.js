@@ -128,14 +128,15 @@ export const getTransactionRemainingDue = (tx) => {
   return Math.max(0, Math.round((original - settled) * 100) / 100);
 };
 
-export const calculateCustomerBalance = (customerId, transactions) => {
-  const custTxs = transactions.filter((t) => t.customerId === customerId);
+export const calculateCustomerBalance = (customerId, transactions = []) => {
+  if (!Array.isArray(transactions) || !customerId) return 0;
+  const custTxs = transactions.filter((t) => t && t.customerId === customerId);
   let balance = 0;
 
   custTxs.forEach((tx) => {
-    if (tx.type === 'CREDIT') {
+    if (tx && tx.type === 'CREDIT') {
       balance += getTransactionRemainingDue(tx);
-    } else if (tx.type === 'PAYMENT') {
+    } else if (tx && tx.type === 'PAYMENT') {
       // Any standalone payment not associated with a specific credit
       balance -= Number(tx.amount) || 0;
     }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, Phone, UserX, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Phone, UserX, Plus, ArrowDownAZ, Clock } from 'lucide-react';
 
 export default function CustomerSidebar({
   customersWithBalance,
@@ -13,6 +13,8 @@ export default function CustomerSidebar({
   currency,
   isMobileHidden,
 }) {
+  const [sortBy, setSortBy] = useState('alphabetical'); // 'alphabetical' | 'recent'
+
   const formatMoney = (amount) => {
     return `${currency}${Number(amount || 0).toLocaleString('en-IN', {
       minimumFractionDigits: 2,
@@ -20,16 +22,28 @@ export default function CustomerSidebar({
     })}`;
   };
 
-  const filteredCustomers = customersWithBalance.filter((c) => {
-    const matchesSearch =
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.mobile && c.mobile.includes(searchTerm));
+  const filteredCustomers = customersWithBalance
+    .filter((c) => {
+      const matchesSearch =
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.mobile && c.mobile.includes(searchTerm));
 
-    if (!matchesSearch) return false;
-    if (activeFilter === 'due') return c.balance > 0;
-    if (activeFilter === 'settled') return c.balance <= 0;
-    return true;
-  });
+      if (!matchesSearch) return false;
+      if (activeFilter === 'due') return c.balance > 0;
+      if (activeFilter === 'settled') return c.balance <= 0;
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'alphabetical') {
+        return (a.name || '').localeCompare(b.name || '', undefined, {
+          sensitivity: 'base',
+          numeric: true,
+        });
+      } else {
+        // Latest entry / activity wise (newest first)
+        return (b.latestActivity || 0) - (a.latestActivity || 0);
+      }
+    });
 
   return (
     <aside className={`customer-sidebar ${isMobileHidden ? 'hidden-mobile' : ''}`}>
@@ -38,6 +52,28 @@ export default function CustomerSidebar({
           <div className="sidebar-title">
             <span>Accounts</span>
             <span className="customer-count-badge">{filteredCustomers.length}</span>
+          </div>
+
+          {/* Sort Switcher: Alphabetical vs Recent */}
+          <div className="sidebar-sort-control">
+            <button
+              type="button"
+              className={`sort-pill-btn ${sortBy === 'alphabetical' ? 'active' : ''}`}
+              onClick={() => setSortBy('alphabetical')}
+              title="Sort Alphabetically (A–Z)"
+            >
+              <ArrowDownAZ size={12} />
+              <span>A–Z</span>
+            </button>
+            <button
+              type="button"
+              className={`sort-pill-btn ${sortBy === 'recent' ? 'active' : ''}`}
+              onClick={() => setSortBy('recent')}
+              title="Sort by Latest Entry / Activity"
+            >
+              <Clock size={12} />
+              <span>Recent</span>
+            </button>
           </div>
         </div>
 

@@ -18,10 +18,10 @@ import {
 } from '../services/storage';
 
 export default function CustomerPassbook({
-  customer,
-  transactions,
-  balance,
-  currency,
+  customer = null,
+  transactions = [],
+  balance = 0,
+  currency = '₹',
   onOpenCreditModal,
   onOpenPaymentModal,
   onOpenCustomerModal,
