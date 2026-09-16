@@ -136,6 +136,7 @@ export default function CustomerSidebar({
             const isSelected = cust.id === selectedCustomerId;
             const initial = cust.name.charAt(0).toUpperCase();
             const hasDue = cust.balance > 0;
+            const hasAdvance = cust.balance < 0;
 
             return (
               <div
@@ -152,10 +153,10 @@ export default function CustomerSidebar({
                   </div>
                   <div
                     className={`customer-card-balance ${
-                      hasDue ? 'has-due' : 'settled'
+                      hasDue ? 'has-due' : hasAdvance ? 'advance' : 'settled'
                     }`}
                   >
-                    {formatMoney(cust.balance)}
+                    {hasAdvance ? `+${formatMoney(Math.abs(cust.balance))}` : formatMoney(cust.balance)}
                   </div>
                 </div>
                 <div className="customer-card-footer">
@@ -165,10 +166,10 @@ export default function CustomerSidebar({
                   </div>
                   <span
                     className={`customer-status-badge ${
-                      hasDue ? 'due' : 'settled'
+                      hasDue ? 'due' : hasAdvance ? 'advance' : 'settled'
                     }`}
                   >
-                    {hasDue ? 'Due' : 'Settled'}
+                    {hasDue ? 'Due' : hasAdvance ? 'Advance' : 'Settled'}
                   </span>
                 </div>
               </div>

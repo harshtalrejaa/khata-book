@@ -25,11 +25,11 @@
   --brand-primary-dark: #4f46e5;
   --brand-glow: rgba(99, 102, 241, 0.2);
 
-  --accent-due: #ef4444; /* Udhar / Outstanding Dues */
+  --accent-due: #ef4444; /* Outstanding Dues / Credit */
   --accent-due-bg: rgba(239, 68, 68, 0.12);
   --accent-due-border: rgba(239, 68, 68, 0.25);
 
-  --accent-received: #10b981; /* Jama / Payment received */
+  --accent-received: #10b981; /* Deposit / Payment received */
   --accent-received-bg: rgba(16, 185, 129, 0.12);
   --accent-received-border: rgba(16, 185, 129, 0.25);
 
@@ -550,6 +550,10 @@ html, body, #root {
   color: var(--accent-received);
 }
 
+.customer-card-balance.advance {
+  color: #10b981;
+}
+
 .customer-card-footer {
   display: flex;
   align-items: center;
@@ -583,6 +587,12 @@ html, body, #root {
   background: var(--accent-received-bg);
   color: var(--accent-received);
   border: 1px solid var(--accent-received-border);
+}
+
+.customer-status-badge.advance {
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
 }
 
 .empty-list-state {
@@ -779,6 +789,24 @@ html, body, #root {
 
 .balance-amount.settled {
   color: var(--accent-received);
+}
+
+.balance-amount.advance {
+  color: #10b981;
+}
+
+.ledger-header-right-block {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ledger-header-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .ledger-actions {
@@ -1218,6 +1246,58 @@ html, body, #root {
   box-shadow: 0 0 0 2px var(--brand-glow);
 }
 
+/* Payment Mode Tabs in Payment Modal */
+.payment-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  background: var(--bg-input);
+  padding: 0.2rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xs);
+}
+
+.payment-mode-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.38rem 0.5rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius-xs) - 2px);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.payment-mode-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface-raised);
+}
+
+.payment-mode-tab.active {
+  background: var(--bg-surface-raised);
+  color: var(--brand-primary-light);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.payment-mode-tab.deposit-tab.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-received);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 1px 6px rgba(16, 185, 129, 0.2);
+}
+
+.tx-deposit-card {
+  border-left: 3px solid #10b981;
+  background: rgba(16, 185, 129, 0.03);
+}
+
 /* Autocomplete Suggestions Dropdown */
 .suggestions-dropdown {
   position: absolute;
@@ -1583,8 +1663,31 @@ html, body, #root {
     gap: 0.45rem;
   }
 
-  .ledger-customer-profile {
+  .ledger-header-right-block {
     width: 100%;
+    align-items: stretch;
+    gap: 0.45rem;
+  }
+
+  .ledger-header-top-row {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .ledger-sub-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .unsettled-toggle-pill-group {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .unsettled-toggle-btn {
+    justify-content: center;
+    padding: 0.28rem 0.4rem;
   }
 
   .ledger-balance-card {

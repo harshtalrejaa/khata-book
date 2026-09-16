@@ -328,9 +328,89 @@ export default function App() {
     setEditingTransaction(null);
   };
 
-  // Payment / Settlement Transaction (Directly Associated with Transactions)
-  const handleSavePayment = ({ id, settlementId, customerId, targetTxId, amount, date, paymentMode, note }) => {
+  // Payment / Settlement / Deposit Transaction
+  const handleSavePayment = ({
+    id,
+    settlementId,
+    customerId,
+    isDeposit,
+    targetTxId,
+    amount,
+    date,
+    paymentMode,
+    note,
+  }) => {
     const paymentDate = date || new Date().toISOString().split('T')[0];
+
+    // Case 1: Editing an existing standalone PAYMENT / Deposit transaction
+    if (id && (!settlementId || id.startsWith('tx_'))) {
+      const existingTx = data.transactions.find((t) => t.id === id);
+      if (existingTx && existingTx.type === 'PAYMENT') {
+        const updatedTx = {
+          ...existingTx,
+          customerId,
+          type: 'PAYMENT',
+          date: paymentDate,
+          amount: Number(amount),
+          paymentMode: paymentMode || 'Cash',
+          note: note || 'General Deposit',
+          updatedAt: new Date().toISOString(),
+        };
+
+        setData((prev) => ({
+          ...prev,
+          transactions: prev.transactions.map((t) => (t.id === id ? updatedTx : t)),
+        }));
+
+        cloudSaveTransaction(updatedTx);
+        showToast(
+          `Deposit of ${data.settings.currency}${Number(amount).toFixed(2)} updated!`,
+          'success'
+        );
+
+        setSelectedCustomerId(customerId);
+        setIsPaymentModalOpen(false);
+        setEditingTransaction(null);
+        setPrefillPaymentData(null);
+        return;
+      }
+    }
+
+    // Case 2: New Standalone Deposit (Rough amount not tied to any bill)
+    if (isDeposit || targetTxId === 'deposit') {
+      const depositTx = {
+        id: 'tx_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        customerId,
+        type: 'PAYMENT',
+        date: paymentDate,
+        items: [],
+        amount: Number(amount),
+        paymentMode: paymentMode || 'Cash',
+        note: note || 'General Deposit',
+        createdAt: new Date().toISOString(),
+      };
+
+      setData((prev) => ({
+        ...prev,
+        transactions: [...prev.transactions, depositTx],
+      }));
+
+      cloudSaveTransaction(depositTx);
+
+      const custName = data.customers.find((c) => c.id === customerId)?.name || 'Account';
+      showToast(
+        `Recorded rough deposit of ${data.settings.currency}${Number(amount).toFixed(2)} for "${custName}"!`,
+        'success'
+      );
+
+      setSelectedCustomerId(customerId);
+      setIsPaymentModalOpen(false);
+      setEditingTransaction(null);
+      setPrefillPaymentData(null);
+      return;
+    }
+
+    // Case 3: Settle specific credit purchase bill
     const newSettlement = {
       id: settlementId || 'stl_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
       amount: Number(amount),
@@ -341,7 +421,6 @@ export default function App() {
     };
 
     if (targetTxId && targetTxId !== 'auto') {
-      // Direct settlement associated with a specific credit purchase
       const targetTx = data.transactions.find((t) => t.id === targetTxId);
       if (targetTx) {
         const currentSettlements = Array.isArray(targetTx.settlements) ? targetTx.settlements : [];
@@ -364,7 +443,7 @@ export default function App() {
         );
       }
     } else {
-      // Auto-allocate settlement across oldest unpaid credit bills
+      // Case 4: Auto-allocate settlement across oldest unpaid credit bills
       let remainingToAllocate = Number(amount);
       const customerCreditTxs = data.transactions
         .filter((t) => t.customerId === customerId && t.type === 'CREDIT')
@@ -420,7 +499,7 @@ export default function App() {
           items: [],
           amount: remainingToAllocate,
           paymentMode: paymentMode || 'Cash',
-          note: note || 'General Payment',
+          note: note || 'Deposit / Advance',
           createdAt: new Date().toISOString(),
         };
         updatedTransactions.push(extraPaymentTx);
@@ -468,20 +547,22 @@ export default function App() {
     }
   };
 
-  // Open Payment / Settlement Modal
+  // Open Payment / Settlement / Deposit Modal
   const handleOpenPaymentModal = (
     customerId = null,
     prefillAmount = null,
     note = '',
-    targetTxId = 'auto'
+    targetTxId = 'auto',
+    mode = 'settle'
   ) => {
     setEditingTransaction(null);
-    if (prefillAmount !== null || note || targetTxId !== 'auto') {
+    if (prefillAmount !== null || note || targetTxId !== 'auto' || mode === 'deposit') {
       setPrefillPaymentData({
         customerId: customerId || selectedCustomerId,
         amount: prefillAmount,
         note,
-        targetTxId: targetTxId || 'auto',
+        targetTxId: mode === 'deposit' ? 'deposit' : targetTxId || 'auto',
+        mode: mode || (targetTxId === 'deposit' ? 'deposit' : 'settle'),
       });
     } else {
       setPrefillPaymentData(null);

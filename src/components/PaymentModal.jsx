@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, X, Receipt } from 'lucide-react';
+import { CheckCircle2, X, Wallet, Receipt, Coins } from 'lucide-react';
 import { getTransactionRemainingDue } from '../services/storage';
 
 export default function PaymentModal({
@@ -15,8 +15,9 @@ export default function PaymentModal({
   onSavePayment,
   onShowToast,
 }) {
+  const [entryMode, setEntryMode] = useState('settle'); // 'settle' | 'deposit'
   const [customerId, setCustomerId] = useState('');
-  const [targetTxId, setTargetTxId] = useState('auto'); // 'auto' or specific tx.id
+  const [targetTxId, setTargetTxId] = useState('auto'); // 'auto', specific tx.id, or 'deposit'
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
   const [paymentMode, setPaymentMode] = useState('Cash');
@@ -26,25 +27,30 @@ export default function PaymentModal({
     if (isOpen) {
       if (editingTransaction) {
         // Editing existing payment or settlement
+        const isStandalone = editingTransaction.type === 'PAYMENT' || editingTransaction.isDeposit;
+        setEntryMode(isStandalone ? 'deposit' : 'settle');
         setCustomerId(editingTransaction.customerId || '');
-        setTargetTxId(editingTransaction.targetTxId || 'auto');
+        setTargetTxId(isStandalone ? 'deposit' : editingTransaction.targetTxId || 'auto');
         setAmount(editingTransaction.amount ? editingTransaction.amount.toString() : '');
         setDate(editingTransaction.date || new Date().toISOString().split('T')[0]);
         setPaymentMode(editingTransaction.paymentMode || 'Cash');
         setNote(editingTransaction.note || '');
       } else if (prefillData) {
-        // Opened with prefill (e.g., from clicking "Settle Bill" or "Settle Full Dues")
+        // Opened with prefill
+        const isDep = prefillData.mode === 'deposit' || prefillData.targetTxId === 'deposit';
+        setEntryMode(isDep ? 'deposit' : 'settle');
         setCustomerId(prefillData.customerId || preselectedCustomerId || '');
-        setTargetTxId(prefillData.targetTxId || 'auto');
+        setTargetTxId(isDep ? 'deposit' : prefillData.targetTxId || 'auto');
         setAmount(prefillData.amount ? prefillData.amount.toString() : '');
         setDate(new Date().toISOString().split('T')[0]);
         setPaymentMode('Cash');
-        setNote(prefillData.note || '');
+        setNote(prefillData.note || (isDep ? 'General Deposit' : ''));
       } else {
-        // Fresh payment
+        // Fresh modal open
         const activeId = preselectedCustomerId || (customers.length > 0 ? customers[0].id : '');
         setCustomerId(activeId);
-        setTargetTxId('auto');
+        setEntryMode(customerBalance && customerBalance > 0 ? 'settle' : 'deposit');
+        setTargetTxId(customerBalance && customerBalance > 0 ? 'auto' : 'deposit');
         setDate(new Date().toISOString().split('T')[0]);
         setPaymentMode('Cash');
         setNote('');
@@ -90,12 +96,30 @@ export default function PaymentModal({
 
   const handleSelectSpecificBill = (txId) => {
     setTargetTxId(txId);
-    if (txId !== 'auto') {
+    if (txId !== 'auto' && txId !== 'deposit') {
       const tx = transactions.find((t) => t.id === txId);
       if (tx) {
         const remaining = getTransactionRemainingDue(tx);
         setAmount(remaining.toString());
         setNote(`Settlement for bill of ${formatMoney(tx.amount)} on ${tx.date}`);
+      }
+    }
+  };
+
+  const handleModeSwitch = (mode) => {
+    setEntryMode(mode);
+    if (mode === 'deposit') {
+      setTargetTxId('deposit');
+      if (!note || note.toLowerCase().includes('settlement')) {
+        setNote('General Deposit');
+      }
+    } else {
+      setTargetTxId('auto');
+      if (note === 'General Deposit') {
+        setNote('');
+      }
+      if (customerBalance && customerBalance > 0 && (!amount || amount === '0')) {
+        setAmount(customerBalance.toString());
       }
     }
   };
@@ -108,7 +132,7 @@ export default function PaymentModal({
       return;
     }
     if (!numAmount || numAmount <= 0) {
-      onShowToast('Please enter a valid settlement amount', 'error');
+      onShowToast(`Please enter a valid ${entryMode === 'deposit' ? 'deposit' : 'settlement'} amount`, 'error');
       return;
     }
 
@@ -116,13 +140,16 @@ export default function PaymentModal({
       id: editingTransaction ? editingTransaction.id : null,
       settlementId: editingTransaction ? editingTransaction.settlementId : null,
       customerId,
-      targetTxId, // 'auto' or specific tx.id
+      isDeposit: entryMode === 'deposit',
+      targetTxId: entryMode === 'deposit' ? 'deposit' : targetTxId,
       amount: numAmount,
       date,
       paymentMode,
-      note: note.trim(),
+      note: note.trim() || (entryMode === 'deposit' ? 'General Deposit' : 'Account Settlement'),
     });
   };
+
+  const isDepositMode = entryMode === 'deposit';
 
   return (
     <div className="modal-overlay">
@@ -130,19 +157,55 @@ export default function PaymentModal({
         <div className="modal-header">
           <div className="modal-title-wrap">
             <div className="modal-icon-badge payment">
-              <CheckCircle2 size={15} strokeWidth={2.4} />
+              {isDepositMode ? (
+                <Wallet size={15} strokeWidth={2.4} />
+              ) : (
+                <CheckCircle2 size={15} strokeWidth={2.4} />
+              )}
             </div>
             <h2 className="modal-title">
-              {editingTransaction ? 'Edit Settlement' : 'Record Settlement'}
+              {editingTransaction
+                ? isDepositMode
+                  ? 'Edit Deposit'
+                  : 'Edit Settlement'
+                : isDepositMode
+                ? 'Record Deposit'
+                : 'Record Bill Settlement'}
             </h2>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Close">
             <X size={16} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="modal-form">
           <div className="modal-body">
+            {/* Mode Switcher: Bill Settlement vs Rough Deposit */}
+            {!editingTransaction && (
+              <div className="form-group">
+                <label className="form-label">Payment Category</label>
+                <div className="payment-mode-tabs">
+                  <button
+                    type="button"
+                    className={`payment-mode-tab ${!isDepositMode ? 'active' : ''}`}
+                    onClick={() => handleModeSwitch('settle')}
+                  >
+                    <Receipt size={13} />
+                    <span>Settle Bill(s) / Dues</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`payment-mode-tab deposit-tab ${isDepositMode ? 'active' : ''}`}
+                    onClick={() => handleModeSwitch('deposit')}
+                  >
+                    <Wallet size={13} />
+                    <span>Deposit / Advance</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Customer Account Selector */}
             <div className="form-group">
               <label className="form-label">
                 <span>
@@ -154,7 +217,7 @@ export default function PaymentModal({
                 value={customerId}
                 onChange={(e) => {
                   setCustomerId(e.target.value);
-                  setTargetTxId('auto');
+                  if (!isDepositMode) setTargetTxId('auto');
                 }}
               >
                 <option value="">-- Choose Customer --</option>
@@ -174,8 +237,8 @@ export default function PaymentModal({
               </select>
             </div>
 
-            {/* Associate with specific Credit Purchase Bill */}
-            {activeCustomerTxs.length > 0 && (
+            {/* In Settle Mode: Associate with specific Credit Purchase Bill */}
+            {!isDepositMode && activeCustomerTxs.length > 0 && (
               <div className="form-group">
                 <label className="form-label">
                   <span>Attach Settlement To:</span>
@@ -198,35 +261,55 @@ export default function PaymentModal({
               </div>
             )}
 
-            {/* Quick Settle Helper Buttons */}
-            {customerBalance > 0 && !editingTransaction && (
+            {/* In Deposit Mode: Clarification Banner */}
+            {isDepositMode && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.55rem 0.75rem',
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  borderRadius: 'var(--radius-xs)',
+                  fontSize: '0.75rem',
+                  color: 'var(--accent-received)',
+                }}
+              >
+                <Coins size={14} style={{ flexShrink: 0 }} />
+                <span>
+                  <b>Standalone Deposit:</b> Kept in customer's account balance as unallocated credit, not tied to any bill.
+                </span>
+              </div>
+            )}
+
+            {/* Quick Helper Buttons for Settle Mode */}
+            {!isDepositMode && customerBalance > 0 && !editingTransaction && (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
-                  padding: '0.6rem 0.75rem',
+                  padding: '0.5rem 0.65rem',
                   background: 'var(--bg-surface-raised)',
                   border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-sm)',
+                  borderRadius: 'var(--radius-xs)',
                   flexWrap: 'wrap',
                 }}
               >
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>
                   Quick Settle:
                 </span>
                 <button
                   type="button"
-                  className="btn btn-sm btn-payment"
-                  style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}
+                  className="btn btn-xs btn-payment"
                   onClick={handleQuickSettleFull}
                 >
                   ⚡ Full {formatMoney(customerBalance)}
                 </button>
                 <button
                   type="button"
-                  className="btn btn-sm btn-outline"
-                  style={{ padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}
+                  className="btn btn-xs btn-outline"
                   onClick={handleQuickSettleHalf}
                 >
                   50% ({formatMoney(customerBalance / 2)})
@@ -234,11 +317,13 @@ export default function PaymentModal({
               </div>
             )}
 
+            {/* Amount & Date */}
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label">
                   <span>
-                    Settlement Amount<span className="form-label-req">*</span>
+                    {isDepositMode ? 'Deposit Amount' : 'Settlement Amount'}
+                    <span className="form-label-req">*</span>
                   </span>
                 </label>
                 <input
@@ -257,7 +342,7 @@ export default function PaymentModal({
               <div className="form-group">
                 <label className="form-label">
                   <span>
-                    Payment Date<span className="form-label-req">*</span>
+                    Date<span className="form-label-req">*</span>
                   </span>
                 </label>
                 <input
@@ -270,6 +355,7 @@ export default function PaymentModal({
               </div>
             </div>
 
+            {/* Payment Mode */}
             <div className="form-group">
               <label className="form-label">Payment Mode</label>
               <select
@@ -285,12 +371,13 @@ export default function PaymentModal({
               </select>
             </div>
 
+            {/* Note / Reference */}
             <div className="form-group">
-              <label className="form-label">Payment Note / Reference (Optional)</label>
+              <label className="form-label">Note / Reference (Optional)</label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Paid in cash, UPI ref #123"
+                placeholder={isDepositMode ? 'e.g. Rough deposit / advance, UPI #123' : 'e.g. Paid in cash, UPI ref #123'}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
@@ -306,7 +393,13 @@ export default function PaymentModal({
               Cancel
             </button>
             <button type="submit" className="btn btn-payment">
-              {editingTransaction ? 'Update Settlement' : 'Save Settlement Payment'}
+              {editingTransaction
+                ? isDepositMode
+                  ? 'Update Deposit'
+                  : 'Update Settlement'
+                : isDepositMode
+                ? 'Save Deposit'
+                : 'Save Bill Settlement'}
             </button>
           </div>
         </form>

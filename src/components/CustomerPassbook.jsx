@@ -11,6 +11,7 @@ import {
   FileText,
   Phone,
   PhoneCall,
+  Wallet,
 } from 'lucide-react';
 import {
   getTransactionSettledAmount,
@@ -79,6 +80,7 @@ export default function CustomerPassbook({
 
   const initial = customer.name.charAt(0).toUpperCase();
   const hasDue = balance > 0;
+  const hasAdvance = balance < 0;
 
   // Sort transactions in descending order by date (newest first)
   const sortedTxs = [...transactions].sort((a, b) => {
@@ -134,67 +136,84 @@ export default function CustomerPassbook({
             </div>
           </div>
 
-          {/* Balance Card with Settlement Option */}
-          <div className="ledger-balance-card">
-            <div className="balance-col">
-              <span className="balance-title">Current Balance</span>
-              <span
-                className={`balance-amount ${hasDue ? 'due' : 'settled'}`}
-              >
-                {formatMoney(balance)}
-              </span>
-            </div>
-            {hasDue ? (
-              <button
-                className="btn btn-xs btn-payment"
-                onClick={() =>
-                  onOpenPaymentModal(
-                    customer.id,
-                    balance,
-                    `Full Account Settlement for ${customer.name}`,
-                    'auto'
-                  )
-                }
-                title={`Settle entire ledger balance`}
-              >
-                <CheckCircle2 size={13} strokeWidth={2.4} />
-                <span>Settle Full Dues ({formatMoney(balance)})</span>
-              </button>
-            ) : (
-              <span
-                className="customer-status-badge settled"
-                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', fontWeight: 700 }}
-              >
-                ✓ Fully Settled
-              </span>
-            )}
-          </div>
+          {/* Right Header Block: Balance Card & Actions */}
+          <div className="ledger-header-right-block">
+            <div className="ledger-header-top-row">
+              {/* Balance Card with Settlement Option */}
+              <div className="ledger-balance-card">
+                <div className="balance-col">
+                  <span className="balance-title">
+                    {hasDue ? 'Current Balance Due' : hasAdvance ? 'Advance Deposit' : 'Current Balance'}
+                  </span>
+                  <span
+                    className={`balance-amount ${
+                      hasDue ? 'due' : hasAdvance ? 'advance' : 'settled'
+                    }`}
+                  >
+                    {hasAdvance ? `+${formatMoney(Math.abs(balance))}` : formatMoney(balance)}
+                  </span>
+                </div>
+                {hasDue ? (
+                  <button
+                    className="btn btn-xs btn-payment"
+                    onClick={() =>
+                      onOpenPaymentModal(
+                        customer.id,
+                        balance,
+                        `Full Account Settlement for ${customer.name}`,
+                        'auto',
+                        'settle'
+                      )
+                    }
+                    title={`Settle entire ledger balance`}
+                  >
+                    <CheckCircle2 size={13} strokeWidth={2.4} />
+                    <span>Settle Dues ({formatMoney(balance)})</span>
+                  </button>
+                ) : hasAdvance ? (
+                  <span
+                    className="customer-status-badge advance"
+                    style={{ padding: '0.25rem 0.55rem', fontSize: '0.74rem', fontWeight: 700 }}
+                  >
+                    💰 Advance Deposit
+                  </span>
+                ) : (
+                  <span
+                    className="customer-status-badge settled"
+                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', fontWeight: 700 }}
+                  >
+                    ✓ Fully Settled
+                  </span>
+                )}
+              </div>
 
-          {/* Actions */}
-          <div className="ledger-actions">
-            <button
-              className="btn btn-secondary btn-xs"
-              onClick={onOpenWhatsApp}
-              title="Send WhatsApp Reminder"
-            >
-              <MessageCircle size={13} />
-              <span>WhatsApp</span>
-            </button>
-            <button
-              className="btn btn-outline btn-xs"
-              onClick={() => window.print()}
-              title="Print Statement"
-            >
-              <Printer size={13} />
-              <span>Print</span>
-            </button>
-            <button
-              className="btn btn-danger-outline btn-xs"
-              onClick={() => onDeleteCustomer(customer.id)}
-              title="Delete customer"
-            >
-              <Trash2 size={13} />
-            </button>
+              {/* Actions */}
+              <div className="ledger-actions">
+                <button
+                  className="btn btn-secondary btn-xs"
+                  onClick={onOpenWhatsApp}
+                  title="Send WhatsApp Reminder"
+                >
+                  <MessageCircle size={13} />
+                  <span>WhatsApp</span>
+                </button>
+                <button
+                  className="btn btn-outline btn-xs"
+                  onClick={() => window.print()}
+                  title="Print Statement"
+                >
+                  <Printer size={13} />
+                  <span>Print</span>
+                </button>
+                <button
+                  className="btn btn-danger-outline btn-xs"
+                  onClick={() => onDeleteCustomer(customer.id)}
+                  title="Delete customer"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -212,16 +231,17 @@ export default function CustomerPassbook({
                   color: 'var(--text-secondary)',
                 }}
               >
-                Click <b>Credit Purchase</b> below to add bills.
+                Click <b>Credit Purchase</b> or <b>Deposit</b> below to add entries.
               </span>
             </div>
           ) : (
             <>
               <div className="timeline-section-title">
-                <span>History ({transactions.length} entries)</span>
+                <span>Transaction History ({sortedTxs.length} entries)</span>
               </div>
               {sortedTxs.map((tx) => {
                 const isCredit = tx.type === 'CREDIT';
+                const isDeposit = tx.type === 'PAYMENT';
                 const settledAmount = isCredit ? getTransactionSettledAmount(tx) : 0;
                 const remainingDue = isCredit ? getTransactionRemainingDue(tx) : 0;
                 const isFullyPaid = isCredit && remainingDue === 0 && tx.amount > 0;
@@ -230,7 +250,7 @@ export default function CustomerPassbook({
                 const badgeClass = isCredit ? 'credit' : 'payment';
                 const badgeLabel = isCredit
                   ? 'Credit Bill'
-                  : `Payment (${tx.paymentMode || 'Cash'})`;
+                  : `Deposit (${tx.paymentMode || 'Cash'})`;
 
                 return (
                   <div
@@ -240,7 +260,7 @@ export default function CustomerPassbook({
                         ? isFullyPaid
                           ? 'tx-credit settled-card'
                           : 'tx-credit'
-                        : 'tx-payment'
+                        : 'tx-payment tx-deposit-card'
                     }`}
                   >
                     <div className="tx-card-top">
@@ -279,6 +299,15 @@ export default function CustomerPassbook({
                             )}
                           </>
                         )}
+                        {/* Standalone Deposit Tag */}
+                        {isDeposit && (
+                          <span
+                            className="customer-status-badge advance"
+                            style={{ fontSize: '0.68rem', padding: '0.08rem 0.35rem' }}
+                          >
+                            💰 Deposit
+                          </span>
+                        )}
                       </div>
 
                       <div className="tx-amount-col">
@@ -299,7 +328,8 @@ export default function CustomerPassbook({
                                   customer.id,
                                   remainingDue,
                                   `Settlement for bill on ${formatDate(tx.date)} (${formatMoney(remainingDue)})`,
-                                  tx.id
+                                  tx.id,
+                                  'settle'
                                 )
                               }
                               title={`Settle remaining: ${formatMoney(remainingDue)}`}
@@ -389,7 +419,7 @@ export default function CustomerPassbook({
                       </div>
                     )}
 
-                    {/* Embedded Associated Settlements / Payments List */}
+                    {/* Embedded Associated Settlements / Payments List for Credit Bills */}
                     {isCredit && Array.isArray(tx.settlements) && tx.settlements.length > 0 && (
                       <div className="tx-settlements-box">
                         <div className="tx-settlements-header">
@@ -435,8 +465,17 @@ export default function CustomerPassbook({
           </div>
           <div className="bottom-bar-actions">
             <button
+              className="btn btn-secondary"
+              onClick={() => onOpenPaymentModal(customer.id, null, 'General Deposit', 'deposit', 'deposit')}
+              title="Record standalone rough deposit or advance payment (not tied to any bill)"
+            >
+              <Wallet size={14} strokeWidth={2.4} />
+              <span>Deposit</span>
+            </button>
+            <button
               className="btn btn-payment"
-              onClick={() => onOpenPaymentModal(customer.id, balance, 'General Account Settlement', 'auto')}
+              onClick={() => onOpenPaymentModal(customer.id, balance > 0 ? balance : null, 'General Account Settlement', 'auto', 'settle')}
+              title="Record bill settlement"
             >
               <CheckCircle2 size={14} strokeWidth={2.4} />
               <span>Record Settlement</span>

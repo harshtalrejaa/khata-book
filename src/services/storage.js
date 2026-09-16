@@ -137,12 +137,12 @@ export const calculateCustomerBalance = (customerId, transactions = []) => {
     if (tx && tx.type === 'CREDIT') {
       balance += getTransactionRemainingDue(tx);
     } else if (tx && tx.type === 'PAYMENT') {
-      // Any standalone payment not associated with a specific credit
+      // Any standalone payment / deposit not associated with a specific credit
       balance -= Number(tx.amount) || 0;
     }
   });
 
-  return Math.max(0, Math.round(balance * 100) / 100);
+  return Math.round(balance * 100) / 100;
 };
 
 export const calculateTransactionTotal = (items = []) => {
