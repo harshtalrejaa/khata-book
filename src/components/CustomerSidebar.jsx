@@ -135,8 +135,10 @@ export default function CustomerSidebar({
           filteredCustomers.map((cust) => {
             const isSelected = cust.id === selectedCustomerId;
             const initial = cust.name.charAt(0).toUpperCase();
-            const hasDue = cust.balance > 0;
-            const hasAdvance = cust.balance < 0;
+            const billsDue = cust.totalBillsDue !== undefined ? cust.totalBillsDue : (cust.balance > 0 ? cust.balance : 0);
+            const deposits = cust.totalDeposits !== undefined ? cust.totalDeposits : 0;
+            const hasDue = billsDue > 0;
+            const hasAdvance = !hasDue && deposits > 0;
 
             return (
               <div
@@ -156,7 +158,11 @@ export default function CustomerSidebar({
                       hasDue ? 'has-due' : hasAdvance ? 'advance' : 'settled'
                     }`}
                   >
-                    {hasAdvance ? `+${formatMoney(Math.abs(cust.balance))}` : formatMoney(cust.balance)}
+                    {hasDue
+                      ? formatMoney(billsDue)
+                      : hasAdvance
+                      ? `+${formatMoney(deposits)}`
+                      : formatMoney(0)}
                   </div>
                 </div>
                 <div className="customer-card-footer">

@@ -46,8 +46,8 @@ export default function SettingsModal({
       <div className="modal-container">
         <div className="modal-header">
           <div className="modal-title-wrap">
-            <div className="modal-icon-badge primary">
-              <Settings size={15} />
+            <div className="modal-icon-badge primary" style={{ overflow: 'hidden', padding: 0 }}>
+              <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </div>
             <h2 className="modal-title">Settings & Cloud Sync</h2>
           </div>

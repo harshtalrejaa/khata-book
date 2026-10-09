@@ -120,15 +120,24 @@ html, body, #root {
 }
 
 .brand-icon-box {
-  width: 28px;
-  height: 28px;
-  background: linear-gradient(135deg, var(--brand-primary), #a855f7);
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-xs);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  background: #c81e1e;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .brand-info {
@@ -635,15 +644,22 @@ html, body, #root {
 }
 
 .empty-selection-art {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-full);
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-md);
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--brand-primary-light);
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.empty-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .empty-selection-title {
@@ -792,6 +808,54 @@ html, body, #root {
 }
 
 .balance-amount.advance {
+  color: #10b981;
+}
+
+.ledger-deposit-pill-card {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.28);
+  padding: 0.42rem 0.65rem;
+  border-radius: var(--radius-xs);
+  transition: all var(--transition-fast);
+}
+
+.ledger-deposit-pill-card:hover {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.deposit-pill-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-full);
+  background: rgba(16, 185, 129, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+.deposit-pill-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.deposit-pill-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: rgba(16, 185, 129, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.deposit-pill-amount {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 800;
   color: #10b981;
 }
 

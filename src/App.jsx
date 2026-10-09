@@ -5,6 +5,7 @@ import {
   persistTransactions,
   persistSettings,
   calculateCustomerBalance,
+  getTransactionRemainingDue,
   defaultSettings,
 } from './services/storage';
 
@@ -96,9 +97,16 @@ export default function App() {
 
   // Derived state: Customer balances & latest activity
   const customersWithBalance = data.customers.map((cust) => {
-    const balance = calculateCustomerBalance(cust.id, data.transactions);
-    let latestActivity = new Date(cust.createdAt || 0).getTime();
     const custTxs = data.transactions.filter((t) => t.customerId === cust.id);
+    const balance = calculateCustomerBalance(cust.id, data.transactions);
+    const totalBillsDue = custTxs
+      .filter((t) => t && t.type === 'CREDIT')
+      .reduce((sum, tx) => sum + getTransactionRemainingDue(tx), 0);
+    const totalDeposits = custTxs
+      .filter((t) => t && t.type === 'PAYMENT')
+      .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+
+    let latestActivity = new Date(cust.createdAt || 0).getTime();
     custTxs.forEach((tx) => {
       const txTime = new Date(tx.createdAt || tx.date || 0).getTime();
       if (txTime > latestActivity) latestActivity = txTime;
@@ -109,7 +117,7 @@ export default function App() {
         });
       }
     });
-    return { ...cust, balance, latestActivity };
+    return { ...cust, balance, totalBillsDue, totalDeposits, latestActivity };
   });
 
   const totalOutstandingDue = customersWithBalance.reduce((sum, c) => {

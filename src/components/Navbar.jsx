@@ -27,7 +27,7 @@ export default function Navbar({
         title="Go to main home view"
       >
         <div className="brand-icon-box">
-          <BookOpen size={22} strokeWidth={2.4} />
+          <img src="/logo.png" alt="Khata Book Logo" className="brand-logo-img" />
         </div>
         <div className="brand-info">
           <span className="brand-title">{shopName || 'My Khata Book'}</span>

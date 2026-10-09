@@ -60,7 +60,7 @@ export default function CustomerPassbook({
       <section className="ledger-view desktop-only-empty">
         <div className="empty-selection-view">
           <div className="empty-selection-art">
-            <Users size={36} strokeWidth={1.5} />
+            <img src="/logo.png" alt="Khata Book Logo" className="empty-logo-img" />
           </div>
           <h2 className="empty-selection-title">Select an Account</h2>
           <p className="empty-selection-subtitle">
@@ -79,8 +79,18 @@ export default function CustomerPassbook({
   }
 
   const initial = customer.name.charAt(0).toUpperCase();
-  const hasDue = balance > 0;
-  const hasAdvance = balance < 0;
+
+  // Calculate total pending amount across all credit bills
+  const totalBillsDue = transactions
+    .filter((t) => t && t.type === 'CREDIT')
+    .reduce((sum, tx) => sum + getTransactionRemainingDue(tx), 0);
+
+  // Calculate total unallocated deposits
+  const totalDeposits = transactions
+    .filter((t) => t && t.type === 'PAYMENT')
+    .reduce((sum, tx) => sum + (Number(tx.amount) || 0), 0);
+
+  const netDue = Math.max(0, Math.round((totalBillsDue - totalDeposits) * 100) / 100);
 
   // Sort transactions in descending order by date (newest first)
   const sortedTxs = [...transactions].sort((a, b) => {
@@ -139,44 +149,37 @@ export default function CustomerPassbook({
           {/* Right Header Block: Balance Card & Actions */}
           <div className="ledger-header-right-block">
             <div className="ledger-header-top-row">
-              {/* Balance Card with Settlement Option */}
+              {/* Balance Card: Total Bills Due */}
               <div className="ledger-balance-card">
                 <div className="balance-col">
-                  <span className="balance-title">
-                    {hasDue ? 'Current Balance Due' : hasAdvance ? 'Advance Deposit' : 'Current Balance'}
-                  </span>
+                  <span className="balance-title">Current Balance Due</span>
                   <span
-                    className={`balance-amount ${
-                      hasDue ? 'due' : hasAdvance ? 'advance' : 'settled'
-                    }`}
+                    className={`balance-amount ${totalBillsDue > 0 ? 'due' : 'settled'}`}
                   >
-                    {hasAdvance ? `+${formatMoney(Math.abs(balance))}` : formatMoney(balance)}
+                    {formatMoney(totalBillsDue)}
                   </span>
                 </div>
-                {hasDue ? (
+                {totalBillsDue > 0 ? (
                   <button
                     className="btn btn-xs btn-payment"
                     onClick={() =>
                       onOpenPaymentModal(
                         customer.id,
-                        balance,
+                        netDue > 0 ? netDue : totalBillsDue,
                         `Full Account Settlement for ${customer.name}`,
                         'auto',
                         'settle'
                       )
                     }
-                    title={`Settle entire ledger balance`}
+                    title={`Settle dues`}
                   >
                     <CheckCircle2 size={13} strokeWidth={2.4} />
-                    <span>Settle Dues ({formatMoney(balance)})</span>
+                    <span>
+                      {totalDeposits > 0
+                        ? `Settle Net (${formatMoney(netDue)})`
+                        : `Settle Full (${formatMoney(totalBillsDue)})`}
+                    </span>
                   </button>
-                ) : hasAdvance ? (
-                  <span
-                    className="customer-status-badge advance"
-                    style={{ padding: '0.25rem 0.55rem', fontSize: '0.74rem', fontWeight: 700 }}
-                  >
-                    💰 Advance Deposit
-                  </span>
                 ) : (
                   <span
                     className="customer-status-badge settled"
@@ -186,6 +189,22 @@ export default function CustomerPassbook({
                   </span>
                 )}
               </div>
+
+              {/* Standalone Deposit Pill beside Current Balance Due */}
+              {totalDeposits > 0 && (
+                <div
+                  className="ledger-deposit-pill-card"
+                  title="Total unallocated deposit in account"
+                >
+                  <div className="deposit-pill-icon">
+                    <Wallet size={12} strokeWidth={2.4} />
+                  </div>
+                  <div className="deposit-pill-col">
+                    <span className="deposit-pill-label">Deposit Balance</span>
+                    <span className="deposit-pill-amount">+{formatMoney(totalDeposits)}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Actions */}
               <div className="ledger-actions">
