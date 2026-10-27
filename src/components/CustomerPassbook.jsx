@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Users,
   ChevronLeft,
@@ -23,6 +23,7 @@ export default function CustomerPassbook({
   transactions = [],
   balance = 0,
   currency = '₹',
+  shopName = 'My Khata Book',
   onOpenCreditModal,
   onOpenPaymentModal,
   onOpenCustomerModal,
@@ -52,6 +53,52 @@ export default function CustomerPassbook({
     } catch {
       return dateStr;
     }
+  };
+
+  // Manage document.title for browser print to ensure the PDF file name is the customer name
+  useEffect(() => {
+    if (!customer?.name) return;
+    let originalTitle = document.title;
+
+    const handleBeforePrint = () => {
+      originalTitle = document.title;
+      if (customer?.name) {
+        document.title = customer.name.trim();
+      }
+    };
+
+    const handleAfterPrint = () => {
+      document.title = originalTitle;
+    };
+
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, [customer?.name]);
+
+  const handlePrint = () => {
+    if (!customer) return;
+    const originalTitle = document.title;
+    if (customer.name && customer.name.trim()) {
+      document.title = customer.name.trim();
+    }
+
+    const restoreTitle = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', restoreTitle);
+    };
+    window.addEventListener('afterprint', restoreTitle);
+
+    window.print();
+
+    // Fallback in case afterprint does not fire
+    setTimeout(() => {
+      document.title = originalTitle;
+    }, 2500);
   };
 
   // If no customer is selected (Hidden on mobile so CustomerSidebar takes 100% view)
@@ -99,9 +146,27 @@ export default function CustomerPassbook({
     return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
   });
 
+  // Filter unsettled transactions (only credit purchases that still have dues remaining)
+  const unsettledTxs = sortedTxs.filter((tx) => {
+    return tx && tx.type === 'CREDIT' && getTransactionRemainingDue(tx) > 0;
+  });
+
   return (
     <section className="ledger-view">
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {/* Print-Only Shop & Statement Header (for browser print) */}
+        <div className="print-only-block print-statement-header">
+          <div className="print-header-top">
+            <div>
+              <h2 className="print-shop-name">{shopName || 'My Khata Book'}</h2>
+              <p className="print-statement-subtitle">Unsettled Dues & Credit Bill Statement</p>
+            </div>
+            <div className="print-date-badge">
+              <span>Date: {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            </div>
+          </div>
+        </div>
+
         {/* Customer Header Banner */}
         <div className="ledger-header">
           <div className="ledger-customer-profile">
@@ -171,7 +236,7 @@ export default function CustomerPassbook({
                         'settle'
                       )
                     }
-                    title={`Settle dues`}
+                    title="Settle dues"
                   >
                     <CheckCircle2 size={13} strokeWidth={2.4} />
                     <span>
@@ -218,8 +283,8 @@ export default function CustomerPassbook({
                 </button>
                 <button
                   className="btn btn-outline btn-xs"
-                  onClick={() => window.print()}
-                  title="Print Statement"
+                  onClick={handlePrint}
+                  title="Print Statement (Unsettled bills only)"
                 >
                   <Printer size={13} />
                   <span>Print</span>
@@ -256,8 +321,21 @@ export default function CustomerPassbook({
           ) : (
             <>
               <div className="timeline-section-title">
-                <span>Transaction History ({sortedTxs.length} entries)</span>
+                <span className="screen-only-text">
+                  Transaction History ({sortedTxs.length} entries)
+                </span>
+                <span className="print-only-text">
+                  Unsettled Bills & Purchases ({unsettledTxs.length} {unsettledTxs.length === 1 ? 'bill' : 'bills'})
+                </span>
               </div>
+
+              {/* Print-only banner if no unsettled bills */}
+              {unsettledTxs.length === 0 && (
+                <div className="print-only-block print-empty-unsettled">
+                  ✓ All bills are fully settled. No pending dues for this account.
+                </div>
+              )}
+
               {sortedTxs.map((tx) => {
                 const isCredit = tx.type === 'CREDIT';
                 const isDeposit = tx.type === 'PAYMENT';
@@ -265,6 +343,7 @@ export default function CustomerPassbook({
                 const remainingDue = isCredit ? getTransactionRemainingDue(tx) : 0;
                 const isFullyPaid = isCredit && remainingDue === 0 && tx.amount > 0;
                 const isPartiallyPaid = isCredit && settledAmount > 0 && remainingDue > 0;
+                const isUnsettled = isCredit && remainingDue > 0;
 
                 const badgeClass = isCredit ? 'credit' : 'payment';
                 const badgeLabel = isCredit
@@ -280,7 +359,7 @@ export default function CustomerPassbook({
                           ? 'tx-credit settled-card'
                           : 'tx-credit'
                         : 'tx-payment tx-deposit-card'
-                    }`}
+                    } ${!isUnsettled ? 'settled-hide-print' : 'unsettled-print-item'}`}
                   >
                     <div className="tx-card-top">
                       <div className="tx-type-info">
@@ -471,6 +550,29 @@ export default function CustomerPassbook({
                   </div>
                 );
               })}
+
+              {/* Print-Only Statement Summary Footer */}
+              <div className="print-only-block print-footer-summary">
+                <div className="print-footer-row">
+                  <span className="print-footer-label">Total Unsettled Due:</span>
+                  <span className="print-footer-due">{formatMoney(totalBillsDue)}</span>
+                </div>
+                {totalDeposits > 0 && (
+                  <div className="print-footer-subrow">
+                    <span>Available Deposit Balance:</span>
+                    <span>+{formatMoney(totalDeposits)}</span>
+                  </div>
+                )}
+                {totalDeposits > 0 && (
+                  <div className="print-footer-subrow print-footer-net">
+                    <span>Net Due:</span>
+                    <span>{formatMoney(netDue)}</span>
+                  </div>
+                )}
+                <p className="print-footer-note">
+                  Please clear any pending dues at your earliest convenience. Thank you!
+                </p>
+              </div>
             </>
           )}
         </div>

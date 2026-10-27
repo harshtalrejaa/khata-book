@@ -47,6 +47,76 @@ export default function App() {
   const [prefillPaymentData, setPrefillPaymentData] = useState(null);
   const [isWhatsAppModalOpen, setIsWhatsAppModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  // Native PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstallable, setIsInstallable] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
+
+  useEffect(() => {
+    // Check if app is already running in standalone / installed mode
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+
+    if (isStandalone) {
+      setIsAppInstalled(true);
+      return;
+    }
+
+    const handleBeforeInstallPrompt = (e) => {
+      // Prevent default mini-infobar on mobile Chrome
+      e.preventDefault();
+      // Stash event to trigger native prompt on user click
+      setDeferredPrompt(e);
+      setIsInstallable(true);
+
+      const dismissed = sessionStorage.getItem('khatabook_pwa_banner_dismissed');
+      if (!dismissed) {
+        setShowInstallBanner(true);
+      }
+    };
+
+    const handleAppInstalled = () => {
+      setDeferredPrompt(null);
+      setIsInstallable(false);
+      setIsAppInstalled(true);
+      setShowInstallBanner(false);
+      showToast('KhataBook app installed successfully!', 'success');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleTriggerInstall = async () => {
+    if (!deferredPrompt) {
+      showToast('To install, open browser options and select "Install app" or "Add to Home Screen".', 'info');
+      return;
+    }
+
+    // Trigger the native install prompt
+    deferredPrompt.prompt();
+
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      showToast('Installing KhataBook...', 'success');
+    }
+    setDeferredPrompt(null);
+    setIsInstallable(false);
+    setShowInstallBanner(false);
+  };
+
+  const handleDismissInstallBanner = () => {
+    setShowInstallBanner(false);
+    sessionStorage.setItem('khatabook_pwa_banner_dismissed', 'true');
+  };
+
 
   // Toast notifications
   const [toasts, setToasts] = useState([]);
@@ -741,6 +811,8 @@ export default function App() {
           transactions={selectedCustomerTransactions}
           balance={selectedCustomerBalance}
           currency={data.settings.currency}
+          shopName={data.settings.shopName}
+          theme={data.settings.theme || 'light'}
           onOpenCreditModal={(custId) => {
             if (custId) setSelectedCustomerId(custId);
             setEditingTransaction(null);
@@ -753,6 +825,7 @@ export default function App() {
           onEditTransaction={handleEditTransaction}
           onDeleteSettlement={handleDeleteSettlement}
           onOpenWhatsApp={() => setIsWhatsAppModalOpen(true)}
+          onShowToast={showToast}
           onBack={() => {
             setSelectedCustomerId(null);
             setIsMobileHidden(false);
@@ -808,6 +881,7 @@ export default function App() {
         balance={selectedCustomerBalance}
         transactions={data.transactions}
         shopName={data.settings.shopName}
+          theme={data.settings.theme || 'light'}
         currency={data.settings.currency}
         onShowToast={showToast}
       />
@@ -824,6 +898,39 @@ export default function App() {
         onResetDemoData={handleResetDemoData}
         onClearAllData={handleClearAllData}
       />
+
+      {/* Native PWA Floating Install Banner */}
+      {showInstallBanner && isInstallable && !isAppInstalled && (
+        <div className="pwa-install-banner animate-slide-up">
+          <div className="pwa-banner-left">
+            <div className="pwa-banner-icon-wrap">
+              <img src="/logo.png" alt="Khata Book" className="pwa-banner-img" />
+            </div>
+            <div className="pwa-banner-text">
+              <span className="pwa-banner-title">Install {data.settings.shopName || 'KhataBook'}</span>
+              <span className="pwa-banner-desc">Install app on your device for instant launch and offline access</span>
+            </div>
+          </div>
+          <div className="pwa-banner-actions">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm pwa-install-btn"
+              onClick={handleTriggerInstall}
+            >
+              <span>Install</span>
+            </button>
+            <button
+              type="button"
+              className="pwa-dismiss-btn"
+              onClick={handleDismissInstallBanner}
+              title="Dismiss"
+              aria-label="Dismiss banner"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notifications */}
       <Toast toasts={toasts} />

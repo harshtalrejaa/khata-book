@@ -1,0 +1,35 @@
+{
+  "id": "/",
+  "name": "My Khata Book - Digital Credit Ledger",
+  "short_name": "KhataBook",
+  "description": "Digital credit ledger for tracking credit purchases, itemized customer transactions, and payment settlements.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#0b0f17",
+  "theme_color": "#6366f1",
+  "lang": "en",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
